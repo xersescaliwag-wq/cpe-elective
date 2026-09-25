@@ -1,0 +1,58 @@
+# MailFlow API — Apache / LiteSpeed (Hostinger hPanel supports both).
+
+# ---- Force HTTPS ------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ---- CORS -------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Accept, X-API-Key"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# ---- Sensitive files must never be served ----------------------------------
+<FilesMatch "^(config|common|imap_helper)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "\.(env|lock|log|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# .env (whatever its name) is never reachable via HTTP.
+<IfModule mod_rewrite.c>
+    RewriteRule ^\.env$ - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^vendor/ - [F,L]
+    RewriteRule ^\.git - [F,L]
+</IfModule>
+
+# ---- PHP hardening ----------------------------------------------------------
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value max_execution_time 30
+    php_value memory_limit 128M
+    php_value post_max_size 4M
+    php_value upload_max_filesize 4M
+</IfModule>
+
+DirectoryIndex disabled
