@@ -7,7 +7,6 @@ import 'screens/inbox_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Pre-warms the glass shaders so the first frame doesn't white-flash.
   await LiquidGlassWidgets.initialize();
   runApp(
     LiquidGlassWidgets.wrap(
@@ -17,16 +16,9 @@ Future<void> main() async {
   );
 }
 
-
-/// MailFlow root.
-///
-/// Deliberately uses [WidgetsApp] (not MaterialApp/CupertinoApp): the glass
-/// design system brings its own chrome, so the neutral shell keeps this file
-/// free of any Material dependency.
 class MailApp extends StatelessWidget {
   const MailApp({super.key, this.repository});
 
-  /// Injectable for tests and demos; sails through to the inbox.
   final MailRepository? repository;
 
   @override
