@@ -1,3 +1,4 @@
+
 class MailMessage {
   const MailMessage({
     required this.id,

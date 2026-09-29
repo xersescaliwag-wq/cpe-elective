@@ -1,47 +1,114 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 
-/// Handles HTTP communication with the PHP backend on celllaunch.shop.
-/// Fulfills requirement: Use HTTP services for API.
+import 'api_config.dart';
+
+
+class ApiException implements Exception {
+  ApiException(this.message, {this.statusCode});
+
+  final String message;
+  final int? statusCode;
+
+  @override
+  String toString() => message;
+}
+
 class ApiClient {
-  static const String _baseUrl = 'https://celllaunch.shop';
+  ApiClient({http.Client? client})
+      : _client = client ?? http.Client(),
+        _base = Uri.parse(ApiConfig.baseUrl);
 
-  Future<Map<String, dynamic>> get(String endpoint, {Map<String, String>? query}) async {
-    try {
-      final uri = Uri.parse('$_baseUrl/$endpoint').replace(queryParameters: query);
-      final response = await http.get(uri);
-      
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) {
-          return decoded;
-        }
-      }
-    } catch (e) {
-      // Fails silently so it won't crash the app if the server is down
-    }
-    return <String, dynamic>{'data': <dynamic>[]};
+  final http.Client _client;
+  final Uri _base;
+
+  static const Duration _timeout = Duration(seconds: 12);
+
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final uri = _base.resolve(path);
+    if (query == null || query.isEmpty) return uri;
+    return uri.replace(queryParameters: query);
   }
 
-  Future<void> post(String endpoint, {required Map<String, dynamic> body}) async {
+  Map<String, String> get _headers => <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-API-Key': ApiConfig.apiKey,
+      };
+
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String>? query,
+  }) {
+    return _send(() => _client.get(_uri(path, query), headers: _headers));
+  }
+
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? body,
+  }) {
+    return _send(() => _client.post(
+          _uri(path),
+          headers: _headers,
+          body: jsonEncode(body ?? const <String, dynamic>{}),
+        ));
+  }
+
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    Map<String, String>? query,
+  }) {
+    return _send(
+      () => _client.delete(_uri(path, query), headers: _headers),
+    );
+  }
+
+  Future<Map<String, dynamic>> _send(
+    Future<http.Response> Function() request,
+  ) async {
+    http.Response response;
     try {
-      final uri = Uri.parse('$_baseUrl/$endpoint');
-      await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
+      response = await request().timeout(_timeout);
+    } on TimeoutException {
+      throw ApiException('Request timed out. Please try again.');
+    } on SocketException {
+      throw ApiException('No internet connection. Please try again.');
+    } on http.ClientException {
+      throw ApiException('Network error. Please try again.');
+    }
+
+    return _decode(response);
+  }
+
+  Map<String, dynamic> _decode(http.Response response) {
+    Map<String, dynamic> json;
+    try {
+      json = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw ApiException(
+        'The server returned an unexpected response.',
+        statusCode: response.statusCode,
       );
-    } catch (e) {
-      // Fails silently 
     }
-  }
 
-  Future<void> delete(String endpoint, {Map<String, String>? query}) async {
-    try {
-      final uri = Uri.parse('$_baseUrl/$endpoint').replace(queryParameters: query);
-      await http.delete(uri);
-    } catch (e) {
-      // Fails silently
+    final okStatus = response.statusCode >= 200 && response.statusCode < 300;
+    if (!okStatus) {
+      final error = json['error'];
+      throw ApiException(
+        error is String ? error : 'Request failed (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
     }
+    if (json['success'] == false) {
+      final error = json['error'];
+      throw ApiException(
+        error is String ? error : 'Operation failed.',
+        statusCode: response.statusCode,
+      );
+    }
+    return json;
   }
 }
