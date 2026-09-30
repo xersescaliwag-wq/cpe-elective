@@ -8,7 +8,6 @@ import '../api/api_client.dart';
 import '../api/api_config.dart';
 import '../api/mail_message.dart';
 import '../api/mail_repository.dart';
-import '../widgets/mail_tile.dart';
 
 /// Full message view with liquid glass design and continuous conversation thread.
 class MessageDetailScreen extends StatefulWidget {
@@ -66,8 +65,13 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
     final targetSubj = normalizeSubj(target.subject);
     final msgSubj = normalizeSubj(m.subject);
 
-    if (targetSubj.isNotEmpty && targetSubj != 'nosubject' && msgSubj.isNotEmpty && msgSubj != 'nosubject') {
-      if (targetSubj == msgSubj || targetSubj.contains(msgSubj) || msgSubj.contains(targetSubj)) {
+    if (targetSubj.isNotEmpty &&
+        targetSubj != 'nosubject' &&
+        msgSubj.isNotEmpty &&
+        msgSubj != 'nosubject') {
+      if (targetSubj == msgSubj ||
+          targetSubj.contains(msgSubj) ||
+          msgSubj.contains(targetSubj)) {
         return true;
       }
     }
@@ -76,7 +80,9 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
     final targetEmail = target.fromEmail.trim().toLowerCase();
     final msgEmail = m.fromEmail.trim().toLowerCase();
 
-    if (targetEmail.isNotEmpty && targetEmail != myMailbox && msgEmail == targetEmail) {
+    if (targetEmail.isNotEmpty &&
+        targetEmail != myMailbox &&
+        msgEmail == targetEmail) {
       return true;
     }
 
@@ -95,20 +101,21 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
     try {
       final allMessages = await widget.repository.listMessages();
       final target = allMessages.firstWhere(
-        (m) => m.id == widget.messageId,
+            (m) => m.id == widget.messageId,
         orElse: () => allMessages.isNotEmpty
             ? allMessages.first
             : MailMessage(
-                id: widget.messageId,
-                fromEmail: '',
-                fromName: '',
-                subject: '',
-                preview: '',
-                body: '',
-              ),
+          id: widget.messageId,
+          fromEmail: '',
+          fromName: '',
+          subject: '',
+          preview: '',
+          body: '',
+        ),
       );
 
-      final conversation = allMessages.where((m) => _isSameThread(m, target)).toList();
+      final conversation =
+      allMessages.where((m) => _isSameThread(m, target)).toList();
 
       conversation.sort((a, b) {
         if (a.date == null) return -1;
@@ -119,7 +126,8 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
       if (!mounted) return;
       setState(() {
         _message = target;
-        _threadMessages = conversation.isNotEmpty ? conversation : <MailMessage>[target];
+        _threadMessages =
+        conversation.isNotEmpty ? conversation : <MailMessage>[target];
         _loading = false;
       });
     } on ApiException catch (error) {
@@ -136,7 +144,8 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
       if (!mounted || _message == null) return;
 
       final target = _message!;
-      final conversation = allMessages.where((m) => _isSameThread(m, target)).toList();
+      final conversation =
+      allMessages.where((m) => _isSameThread(m, target)).toList();
 
       conversation.sort((a, b) {
         if (a.date == null) return -1;
@@ -146,11 +155,10 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
 
       if (!mounted) return;
       setState(() {
-        _threadMessages = conversation.isNotEmpty ? conversation : <MailMessage>[target];
+        _threadMessages =
+        conversation.isNotEmpty ? conversation : <MailMessage>[target];
       });
-    } catch (_) {
-      // Silent refresh errors ignored
-    }
+    } catch (_) {}
   }
 
   void _fail(String message) {
@@ -229,12 +237,21 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
 
     final subject = _formatReplySubject(message.subject);
 
+    final now = DateTime.now();
+    final senderHeader = message.fromName.isNotEmpty
+        ? '${message.fromName} <${message.fromEmail}>'
+        : message.fromEmail;
+    final quotedBody =
+    message.body.trim().isNotEmpty ? message.body : message.preview;
+    final fullOutgoingBody =
+        '$replyBody\n\nOn ${_formatFull(message.date ?? now)} $senderHeader wrote:\n> ${quotedBody.replaceAll('\n', '\n> ')}';
+
     setState(() => _sendingReply = true);
     try {
       await widget.repository.sendMessage(
         to: recipient,
         subject: subject,
-        body: replyBody,
+        body: fullOutgoingBody,
       );
       if (!mounted) return;
 
@@ -295,7 +312,7 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
 
   Widget _buildBody() {
     if (_error != null || _loading || _message == null) {
-      return _DetailSkeleton();
+      return const _DetailSkeleton();
     }
 
     final message = _message!;
@@ -328,8 +345,10 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
           final finalBody = displayBody.isNotEmpty
               ? displayBody
               : (msg.preview.trim().isNotEmpty
-                  ? msg.preview.trim()
-                  : (msg.body.trim().isNotEmpty ? msg.body.trim() : '(No text content)'));
+              ? msg.preview.trim()
+              : (msg.body.trim().isNotEmpty ? msg.body.trim() : '(No text content)'));
+
+          final parsed = _parseEmailQuotes(finalBody);
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 14),
@@ -361,7 +380,7 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
                               isMine ? 'To: ${msg.fromEmail.isNotEmpty ? msg.fromEmail : recipient}' : msg.fromEmail,
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: CupertinoColors.systemGrey,
+                                color: Color(0xFFCBD5E1),
                               ),
                             ),
                             if (msg.date != null) ...[
@@ -370,8 +389,8 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
                                 _formatFull(msg.date!),
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: CupertinoColors.activeBlue,
-                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF60A5FA),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -380,13 +399,64 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+
+                  if (parsed.quoteHeader != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF000000).withValues(alpha: 0.35),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                          bottomLeft: Radius.circular(6),
+                          topLeft: Radius.circular(6),
+                        ),
+                        border: const Border(
+                          left: BorderSide(
+                            color: Color(0xFF60A5FA),
+                            width: 3.5,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            parsed.quoteHeader!,
+                            style: const TextStyle(
+                              color: Color(0xFF93C5FD),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              fontStyle: FontStyle.italic,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (parsed.quoteBody != null && parsed.quoteBody!.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              parsed.quoteBody!,
+                              style: const TextStyle(
+                                color: Color(0xFFE2E8F0),
+                                fontSize: 13.5,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
                   Text(
-                    finalBody,
+                    parsed.replyText,
                     style: const TextStyle(
-                      color: Color(0xFFE2E8F0),
+                      color: Color(0xFFFFFFFF),
                       fontSize: 15,
-                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                      height: 1.45,
                     ),
                   ),
                 ],
@@ -416,7 +486,7 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
                     ),
                     CupertinoButton(
                       padding: EdgeInsets.zero,
-                      minSize: 24,
+                      minimumSize: Size.zero,
                       onPressed: () {
                         setState(() {
                           _isReplying = false;
@@ -482,6 +552,37 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
     );
   }
 
+  _ParsedEmailContent _parseEmailQuotes(String rawContent) {
+    final quoteRegex = RegExp(r'(On\s+[\s\S]+?wrote:)', caseSensitive: false);
+    final match = quoteRegex.firstMatch(rawContent);
+
+    if (match != null) {
+      final replyPart = rawContent.substring(0, match.start).trim();
+      final headerPart = match.group(1)?.trim();
+      String remaining = rawContent.substring(match.end).trim();
+
+      final secondaryQuote = RegExp(r'On\s+[\s\S]+?wrote:', caseSensitive: false).firstMatch(remaining);
+      if (secondaryQuote != null) {
+        remaining = remaining.substring(0, secondaryQuote.start).trim();
+      }
+
+      final cleanedQuoteLines = remaining
+          .replaceAll('>', '\n')
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
+
+      return _ParsedEmailContent(
+        replyText: replyPart.isNotEmpty ? replyPart : '(No message body)',
+        quoteHeader: headerPart,
+        quoteBody: cleanedQuoteLines.isNotEmpty ? cleanedQuoteLines.join('\n') : null,
+      );
+    }
+
+    return _ParsedEmailContent(replyText: rawContent.trim());
+  }
+
   String _initial(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return '?';
@@ -505,7 +606,7 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
       fit: StackFit.expand,
       children: [
         Image.asset(
-          'assets/background.jpg',
+          'assets/arigato.jpeg',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(color: const Color(0xFF090B10));
@@ -517,6 +618,18 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
       ],
     );
   }
+}
+
+class _ParsedEmailContent {
+  final String replyText;
+  final String? quoteHeader;
+  final String? quoteBody;
+
+  _ParsedEmailContent({
+    required this.replyText,
+    this.quoteHeader,
+    this.quoteBody,
+  });
 }
 
 class _AnimatedSendingIcon extends StatefulWidget {
@@ -586,23 +699,24 @@ class _Avatar extends StatelessWidget {
   }
 }
 
+/// Plain at malinis na skeleton para sa message details:
+/// Diretso mga Bone widget sa loob ng simpleng flat container
 class _DetailSkeleton extends StatelessWidget {
+  const _DetailSkeleton();
+
   @override
   Widget build(BuildContext context) {
     return Skeletonizer(
       enabled: true,
-      enableSwitchAnimation: true,
-      switchAnimationConfig: const SwitchAnimationConfig(
-        duration: Duration(milliseconds: 300),
-        switchInCurve: Curves.easeInOut,
-        switchOutCurve: Curves.easeInOut,
-      ),
+      containersColor: CupertinoColors.transparent,
+      ignoreContainers: true,
       effect: const ShimmerEffect(
-        baseColor: Color(0x22FFFFFF),
-        highlightColor: Color(0x66FFFFFF),
+        baseColor: Color(0x1AFFFFFF),
+        highlightColor: Color(0x40FFFFFF),
         duration: Duration(milliseconds: 1200),
       ),
       child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           16,
           16 + MediaQuery.paddingOf(context).top + 56,
@@ -610,73 +724,38 @@ class _DetailSkeleton extends StatelessWidget {
           32 + MediaQuery.paddingOf(context).bottom,
         ),
         children: <Widget>[
-          const Text(
-            'Loading email subject line title for message detail',
-            style: TextStyle(
-              color: Color(0xFFF2F5FF),
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              height: 1.25,
-            ),
+          // Subject line placeholder
+          const Bone.text(
+            width: 260,
+            fontSize: 22,
           ),
-          const SizedBox(height: 16),
-          GlassCard(
-            padding: const EdgeInsets.all(16),
-            shape: const LiquidRoundedRectangle(borderRadius: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 8),
+          const Bone.text(
+            width: 170,
+            fontSize: 16,
+          ),
+          const SizedBox(height: 20),
+
+          // Sender card placeholder
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0x15FFFFFF),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: CupertinoColors.activeBlue,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 14),
+                Bone.circle(size: 42),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Loading sender name',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: CupertinoColors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'sender@example.com',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.systemGrey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Text(
-                            'To: ',
-                            style: TextStyle(fontSize: 13, color: CupertinoColors.systemGrey2),
-                          ),
-                          Text(
-                            ApiConfig.mailbox,
-                            style: const TextStyle(fontSize: 13, color: CupertinoColors.white),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '2026/09/23 · 04:20 PM',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: CupertinoColors.activeBlue,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      Bone.text(width: 140, fontSize: 15),
+                      SizedBox(height: 6),
+                      Bone.text(width: 190, fontSize: 13),
                     ],
                   ),
                 ),
@@ -684,18 +763,27 @@ class _DetailSkeleton extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const GlassCard(
-            padding: EdgeInsets.all(20),
-            shape: LiquidRoundedRectangle(borderRadius: 20),
-            child: Text(
-              'Loading body paragraph line one with full email content layout.\n\n'
-              'Loading body paragraph line two with realistic line length and text wrap.\n\n'
-              'Loading final paragraph line with closing remarks.',
-              style: TextStyle(
-                color: Color(0xFFE2E8F0),
-                fontSize: 15,
-                height: 1.5,
-              ),
+
+          // Message body content placeholder
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0x15FFFFFF),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Bone.text(width: double.infinity, fontSize: 14),
+                SizedBox(height: 10),
+                Bone.text(width: double.infinity, fontSize: 14),
+                SizedBox(height: 10),
+                Bone.text(width: 220, fontSize: 14),
+                SizedBox(height: 16),
+                Bone.text(width: double.infinity, fontSize: 14),
+                SizedBox(height: 10),
+                Bone.text(width: 180, fontSize: 14),
+              ],
             ),
           ),
         ],

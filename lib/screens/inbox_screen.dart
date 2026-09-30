@@ -32,17 +32,6 @@ class _InboxScreenState extends State<InboxScreen> {
   String? _error;
   int _selectedTabIndex = 0;
 
-  static final MailMessage _placeholder = MailMessage(
-    id: -1,
-    fromEmail: 'loading@placeholder.example',
-    fromName: 'Loading sender',
-    subject: 'Loading subject line',
-    preview: 'Loading a longer message preview line that wraps nicely on screen.',
-    body: '',
-    date: DateTime.now(),
-    seen: false,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -87,8 +76,7 @@ class _InboxScreenState extends State<InboxScreen> {
         _messages = messages.where((m) => !_deletedMsgIds.contains(m.id)).toList();
         _error = null;
       });
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _silentRefresh() async {
@@ -100,8 +88,7 @@ class _InboxScreenState extends State<InboxScreen> {
         _messages = messages.where((m) => !_deletedMsgIds.contains(m.id)).toList();
         _error = null;
       });
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   void _fail(String message) {
@@ -255,39 +242,73 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
+  Widget _buildPlainSkeletonCard(int index) {
+    final titleWidths = [140.0, 180.0, 120.0, 160.0, 130.0];
+    final subWidths = [240.0, 200.0, 260.0, 180.0, 220.0];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0x15FFFFFF),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Bone.circle(size: 42),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Bone.text(
+                      width: titleWidths[index % titleWidths.length],
+                      fontSize: 15,
+                    ),
+                    const Bone.text(
+                      width: 36,
+                      fontSize: 11,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Bone.text(
+                  width: subWidths[index % subWidths.length],
+                  fontSize: 13,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNotificationsView() {
     if (_loading) {
       return Skeletonizer(
         enabled: true,
-        enableSwitchAnimation: true,
-        switchAnimationConfig: const SwitchAnimationConfig(
-          duration: Duration(milliseconds: 300),
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-        ),
+        containersColor: CupertinoColors.transparent,
+        ignoreContainers: true,
         effect: const ShimmerEffect(
-          baseColor: Color(0x22FFFFFF),
-          highlightColor: Color(0x66FFFFFF),
+          baseColor: Color(0x1AFFFFFF),
+          highlightColor: Color(0x40FFFFFF),
           duration: Duration(milliseconds: 1200),
         ),
         child: ListView.builder(
+          physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             16,
             16 + MediaQuery.paddingOf(context).top + 56,
             16,
             110,
           ),
-          itemCount: 4,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildNotificationTile(
-              icon: const FaIcon(FontAwesomeIcons.envelope, size: 16, color: CupertinoColors.activeBlue),
-              bgColor: CupertinoColors.activeBlue.withValues(alpha: 0.18),
-              title: 'Loading notification title',
-              subtitle: 'Loading notification subtitle preview details...',
-              time: '1m ago',
-            ),
-          ),
+          itemCount: 5,
+          itemBuilder: (context, index) => _buildPlainSkeletonCard(index),
         ),
       );
     }
@@ -482,9 +503,7 @@ class _InboxScreenState extends State<InboxScreen> {
               const SizedBox(height: 4),
               const Text(
                 'Project Email Sending',
-                    style: TextStyle(fontSize: 13,
-                    color: CupertinoColors.white),
-
+                style: TextStyle(fontSize: 13, color: CupertinoColors.white),
               ),
             ],
           ),
@@ -572,24 +591,6 @@ class _InboxScreenState extends State<InboxScreen> {
     );
   }
 
-  Widget _buildBackground() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          'assets/background.jpg',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(color: const Color(0xFF090B10));
-          },
-        ),
-        Container(
-          color: const Color(0xFF000000).withValues(alpha: 0.35),
-        ),
-      ],
-    );
-  }
-
   List<MailMessage> get _displayMessages {
     final Map<String, MailMessage> threads = {};
     for (final m in _messages) {
@@ -620,125 +621,147 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Widget _buildBody() {
     final showSkeleton = _loading || _error != null;
-    final displayList = _displayMessages;
-    final itemCount = showSkeleton ? 8 : displayList.length;
 
-    return Skeletonizer(
-      enabled: showSkeleton,
-      enableSwitchAnimation: true,
-      switchAnimationConfig: const SwitchAnimationConfig(
-        duration: Duration(milliseconds: 300),
-        switchInCurve: Curves.easeInOut,
-        switchOutCurve: Curves.easeInOut,
-      ),
-      effect: const ShimmerEffect(
-        baseColor: Color(0x22FFFFFF),
-        highlightColor: Color(0x66FFFFFF),
-        duration: Duration(milliseconds: 1200),
-      ),
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: <Widget>[
-          CupertinoSliverRefreshControl(onRefresh: _refresh),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16 + MediaQuery.paddingOf(context).top + 56,
-              16,
-              110,
-            ),
-            sliver: SliverList.builder(
-              itemCount: itemCount,
-              itemBuilder: (context, index) {
-                final message = showSkeleton ? _placeholder : displayList[index];
-                if (showSkeleton) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: MailTile(message: message),
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Dismissible(
-                    key: ValueKey('dismiss-${message.id}'),
-                    direction: DismissDirection.startToEnd,
-                    dismissThresholds: const {
-                      DismissDirection.startToEnd: 0.25,
-                    },
-                    confirmDismiss: (direction) async {
-                      final confirmed = await GlassDialog.show<bool>(
-                        context: context,
-                        title: 'Delete message?',
-                        message: 'Are you sure you want to delete this message?',
-                        settings: const LiquidGlassSettings(
-                          chromaticAberration: 0.12,
-                          thickness: 28,
-                          blur: 16,
+    if (showSkeleton) {
+      return Skeletonizer(
+        enabled: true,
+        containersColor: CupertinoColors.transparent,
+        ignoreContainers: true,
+        effect: const ShimmerEffect(
+          baseColor: Color(0x1AFFFFFF),
+          highlightColor: Color(0x40FFFFFF),
+          duration: Duration(milliseconds: 1200),
+        ),
+        child: ListView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16 + MediaQuery.paddingOf(context).top + 56,
+            16,
+            110,
+          ),
+          itemCount: 6,
+          itemBuilder: (context, index) => _buildPlainSkeletonCard(index),
+        ),
+      );
+    }
+
+    final displayList = _displayMessages;
+
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: <Widget>[
+        CupertinoSliverRefreshControl(onRefresh: _refresh),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16 + MediaQuery.paddingOf(context).top + 56,
+            16,
+            110,
+          ),
+          sliver: SliverList.builder(
+            itemCount: displayList.length,
+            itemBuilder: (context, index) {
+              final message = displayList[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Dismissible(
+                  key: ValueKey('dismiss-${message.id}'),
+                  direction: DismissDirection.startToEnd,
+                  dismissThresholds: const {
+                    DismissDirection.startToEnd: 0.25,
+                  },
+                  confirmDismiss: (direction) async {
+                    final confirmed = await GlassDialog.show<bool>(
+                      context: context,
+                      title: 'Delete message?',
+                      message: 'Are you sure you want to delete this message?',
+                      settings: const LiquidGlassSettings(
+                        chromaticAberration: 0.12,
+                        thickness: 28,
+                        blur: 16,
+                      ),
+                      actions: <GlassDialogAction>[
+                        GlassDialogAction(
+                          label: 'Cancel',
+                          onPressed: () => Navigator.of(context).pop(false),
                         ),
-                        actions: <GlassDialogAction>[
-                          GlassDialogAction(
-                            label: 'Cancel',
-                            onPressed: () => Navigator.of(context).pop(false),
-                          ),
-                          GlassDialogAction(
-                            label: 'Delete',
-                            isDestructive: true,
-                            onPressed: () => Navigator.of(context).pop(true),
-                          ),
-                        ],
-                      );
-                      return confirmed == true;
-                    },
-                    onDismissed: (direction) {
-                      final msgId = message.id;
-                      _deletedMsgIds.add(msgId);
-                      setState(() {
-                        _messages = _messages.where((m) => m.id != msgId).toList();
-                      });
-                      _repo.deleteMessage(msgId).catchError((_) {
-                        _deletedMsgIds.remove(msgId);
-                        if (mounted) _refresh();
-                      });
-                    },
-                    background: Container(
-                      margin: EdgeInsets.zero,
-                      padding: const EdgeInsets.only(left: 20),
-                      alignment: Alignment.centerLeft,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemRed.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Row(
-                        children: [
-                          FaIcon(
-                            FontAwesomeIcons.trash,
-                            color: CupertinoColors.white,
-                            size: 18,
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            'Delete',
-                            style: TextStyle(
-                              color: CupertinoColors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
+                        GlassDialogAction(
+                          label: 'Delete',
+                          isDestructive: true,
+                          onPressed: () => Navigator.of(context).pop(true),
+                        ),
+                      ],
+                    );
+                    return confirmed == true;
+                  },
+                  onDismissed: (direction) {
+                    final msgId = message.id;
+                    _deletedMsgIds.add(msgId);
+                    setState(() {
+                      _messages = _messages.where((m) => m.id != msgId).toList();
+                    });
+                    _repo.deleteMessage(msgId).catchError((_) {
+                      _deletedMsgIds.remove(msgId);
+                      if (mounted) _refresh();
+                    });
+                  },
+                  background: Container(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.only(left: 20),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemRed.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    child: MailTile(
-                      message: message,
-                      onTap: () => _openMessage(message),
+                    child: const Row(
+                      children: [
+                        FaIcon(
+                          FontAwesomeIcons.trash,
+                          color: CupertinoColors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: CupertinoColors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              },
-            ),
+                  child: MailTile(
+                    message: message,
+                    onTap: () => _openMessage(message),
+                  ),
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackground() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          'assets/arigato.jpeg',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(color: const Color(0xFF090B10));
+          },
+        ),
+        Container(
+          color: const Color(0xFF000000).withValues(alpha: 0.35),
+        ),
+      ],
     );
   }
 }

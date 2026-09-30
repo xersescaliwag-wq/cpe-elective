@@ -174,7 +174,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
       fit: StackFit.expand,
       children: [
         Image.asset(
-          'assets/background.jpg',
+          'assets/arigato.jpeg',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(color: const Color(0xFF090B10));
